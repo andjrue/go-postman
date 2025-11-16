@@ -11,10 +11,10 @@ import (
 func Run() {
 	coll, err := collections.LoadFile()
 	if err != nil {
-		fmt.Errorf("error loading config: %w", err)
+		fmt.Printf("error loading config: %v", err)
 		return
 	}
-	
+
 	p := tea.NewProgram(components.NewModel(coll))
 	if _, err := p.Run(); err != nil {
 		panic(err)
