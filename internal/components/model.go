@@ -7,13 +7,13 @@ import (
 
 type Model struct {
 	collection *collections.Collection
-	tree *TreeView
+	tree       *TreeView
 }
 
 func NewModel(coll *collections.Collection) Model {
 	return Model{
 		collection: coll,
-		tree: NewTreeView(coll),
+		tree:       NewTreeView(coll),
 	}
 }
 
@@ -28,10 +28,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
+
+	case CreateDirectoryMsg:
+		if msg.name != "" {
+			updatedColl, err := collections.AddDirectory(m.collection, msg.name)
+			if err == nil {
+				m.collection = updatedColl
+				m.tree = NewTreeView(m.collection)
+			} else {
+				// TODO: Display an error message here
+				return nil, nil
+			}
+		}
 	}
-	
-	m.tree.Update(msg)
-	return m, nil
+
+	cmd := m.tree.Update(msg)
+	return m, cmd
 }
 
 func (m Model) View() string {
