@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/andjrue/go-postman/internal/collections"
+	components "github.com/andjrue/go-postman/internal/components/request-modal"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -15,6 +16,8 @@ type TreeView struct {
 	cursor             int
 	directoryTextInput textinput.Model
 	showDirectoryInput bool
+	requestTextInput   textinput.Model
+	showRequestInput   bool
 }
 
 type treeItem struct {
@@ -43,8 +46,16 @@ func (t *TreeView) resetTextInput() {
 	t.directoryTextInput.Blur()
 }
 
+func (t *TreeView) resetReqTextInput() {
+	t.requestTextInput.SetValue("")
+	t.showRequestInput = false
+	t.requestTextInput.Blur()
+}
+
 func NewTreeView(coll *collections.Collection) *TreeView {
 	dti := createDirectoryTextInput()
+	req := components.CreateRequestTextInput()
+
 	items := []treeItem{}
 
 	for dirName, directory := range *coll {
@@ -69,11 +80,38 @@ func NewTreeView(coll *collections.Collection) *TreeView {
 		cursor:             0,
 		directoryTextInput: dti,
 		showDirectoryInput: false,
+		requestTextInput:   req,
+		showRequestInput:   false,
 	}
 }
 
 func (t *TreeView) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
+
+	if t.showRequestInput {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+
+			case "enter":
+				reqName := t.requestTextInput.Value()
+				t.resetReqTextInput()
+				return func() tea.Msg {
+					return components.CreateRequestInput{
+						RequestName: reqName,
+					}
+				}
+
+			case "esc":
+				components.PrintRequestName(t.requestTextInput.Value())
+				t.resetReqTextInput()
+				return nil
+			}
+		}
+
+		t.requestTextInput, cmd = t.requestTextInput.Update(msg)
+		return cmd
+	}
 
 	if t.showDirectoryInput {
 		switch msg := msg.(type) {
@@ -113,6 +151,9 @@ func (t *TreeView) Update(msg tea.Msg) tea.Cmd {
 			t.showDirectoryInput = true
 			t.directoryTextInput.Focus()
 			return textinput.Blink
+		case "n":
+			t.showRequestInput = true
+			t.requestTextInput.Focus()
 		}
 	}
 
@@ -131,6 +172,12 @@ func (t *TreeView) View() string {
 	}
 
 	s = "Collections:\n\n"
+
+	if t.showRequestInput {
+		s += "Create New Request:\n\n"
+		s += t.requestTextInput.View() + "\n\n"
+		s += "(press enter to create, esc to cancel"
+	}
 
 	for i, item := range t.items {
 		cursor := " "
